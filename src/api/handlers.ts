@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { config } from "../config.js";
 import { notFoundError, unauthorizedError, forbiddenError, badRequestError} from "./errors.js";
 import { reset, createUser } from "../db/queries/users.js";
-import { createChirp } from "../db/queries/createChirp.js";
+import { createChirp, getAllChirps, getChirpById} from "../db/queries/chirps.js";
 import { validateChirp } from "./validateChirp.js";
 
 
@@ -133,6 +133,35 @@ export async function handlerCreateChirp(req: Request, res: Response) {
     }
 
     res.status(201);
+    res.send(JSON.stringify(resBody));
+
+}
+
+export async function handlerGetChirps(_: Request, res: Response) {
+    const chirps = await getAllChirps();
+    if(!chirps){
+        res.send(400);
+        throw new Error("Could not get chirps");
+    }
+    res.status(200);
+    res.send(chirps);
+}
+
+export async function handlerGetChirpById(req: Request, res: Response) {
+    const id = req.params.chirpId;
+    const chirps = await getChirpById(Array.isArray(id) ? id[0]: id);
+    if(!chirps){
+        res.send(404);
+        throw new notFoundError("Could not get chirp by id");
+    }
+
+    const resBody = {
+        "id": chirps[0].id,
+        "createdAt": chirps[0].createdAt,
+        "updatedAt": chirps[0].updatedAt,
+        "body": chirps[0].body,
+        "userId": chirps[0].userId,
+    }
     res.send(JSON.stringify(resBody));
 
 }
