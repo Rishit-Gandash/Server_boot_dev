@@ -1,5 +1,5 @@
 import express from "express";
-import { handlerGetChirpById, handlerGetChirps, handlerReadiness, handlerDisplayHits, handlerCreateChirp, errorHandler, handlerCreateUser, handlerResetHitsAndUsers} from "./api/handlers.js";
+import { handlerUserLogin, handlerGetChirpById, handlerGetChirps, handlerReadiness, handlerDisplayHits, handlerCreateChirp, errorHandler, handlerCreateUser, handlerResetHitsAndUsers} from "./api/handlers.js";
 import { increaseHits, middlewareLogResponses } from "./api/middleware.js";
 import postgres from "postgres";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
@@ -31,6 +31,15 @@ app.get("/api/healthz", handlerReadiness);
 app.get("/admin/metrics", handlerDisplayHits);
 app.get("/api/chirps/:chirpId", handlerGetChirpById);
 app.post("/admin/reset", handlerResetHitsAndUsers);
+
+app.post("/api/login", async(req, res, next) => {
+    try {
+        await handlerUserLogin(req, res);
+    } catch(err) {
+        next(err);
+    }
+});
+
 // app.post("/api/validate_chirp", async(req, res, next) => {
 //     try {
 //         await handlerValidate(req, res);

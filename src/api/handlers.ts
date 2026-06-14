@@ -1,9 +1,10 @@
 import type { NextFunction, Request, Response } from "express";
 import { config } from "../config.js";
 import { notFoundError, unauthorizedError, forbiddenError, badRequestError} from "./errors.js";
-import { reset, createUser } from "../db/queries/users.js";
+import { reset, createUser, getHashPwdByMail, getUserByMail } from "../db/queries/users.js";
 import { createChirp, getAllChirps, getChirpById} from "../db/queries/chirps.js";
 import { validateChirp } from "./validateChirp.js";
+import { hashPassword, checkPasswordHash } from "../auth.js";
 
 
 export async function handlerReadiness(_: Request, res: Response){
@@ -70,12 +71,18 @@ export async function errorHandler(err: Error, req : Request, res: Response, nex
 export async function handlerCreateUser(req: Request, res: Response){
     try {
         const userMail = req.body.email;
+        const userPwd = req.body.password;
 
-        if(!userMail){
+        if(!userMail || !userPwd){
             throw new badRequestError("Missing required Fields");
         }
 
-        const user = await createUser({ email: userMail});
+        const hashedPwd = await hashPassword(userPwd);
+
+        const user = await createUser({ 
+            email: userMail,
+            hashedPassword: hashedPwd,
+        });
 
         if(!user){
             throw new Error("Could not create user")
@@ -93,6 +100,35 @@ export async function handlerCreateUser(req: Request, res: Response){
         return;
     } catch (err) {
         throw err;
+    }
+}
+
+
+export async function handlerUserLogin (req: Request, res: Response) {
+    const userMail = req.body.email;
+    const userPwd = req.body.password;
+
+    if(!userMail || !userPwd){
+        throw new badRequestError("Missing required Fields");
+    }
+
+    const hashPwd = await getHashPwdByMail(userMail);
+    const valid = await checkPasswordHash(userPwd, hashPwd);
+    if(valid) {
+        const user = await getUserByMail(userMail);
+        const resBody = {
+            "id": user.id,
+            "createdAt": user.createdAt,
+            "updatedAt": user.updatedAt,
+            "email": user.email,
+        }
+
+        res.status(200); 
+        res.send(JSON.stringify(resBody));
+
+    } else {
+        res.status(401)
+        res.send("Invalid password entered")
     }
 }
 
@@ -165,3 +201,4 @@ export async function handlerGetChirpById(req: Request, res: Response) {
     res.send(JSON.stringify(resBody));
 
 }
+
