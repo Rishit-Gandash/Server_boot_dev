@@ -1,1 +1,6 @@
 node_modules/
+server.log
+.env
+notes.txt
+*.log
+dist/
