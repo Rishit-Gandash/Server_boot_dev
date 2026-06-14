@@ -1,5 +1,5 @@
 import express from "express";
-import { handlerReadiness, handlerDisplayHits, handlerValidate, errorHandler, handlerCreateUser, handlerResetHitsAndUsers} from "./api/handlers.js";
+import { handlerReadiness, handlerDisplayHits, handlerCreateChirp, errorHandler, handlerCreateUser, handlerResetHitsAndUsers} from "./api/handlers.js";
 import { increaseHits, middlewareLogResponses } from "./api/middleware.js";
 import postgres from "postgres";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
@@ -7,7 +7,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import { config } from "./config.js";
 
 const migrationClient = postgres(config.db.url, { max: 1 });
-// await migrate(drizzle(migrationClient), config.db.migrationConfig);
+await migrate(drizzle(migrationClient), config.db.migrationConfig);
 
 
 const app = express();
@@ -23,17 +23,25 @@ app.use("/app", increaseHits, express.static("./src/app/"));
 app.get("/api/healthz", handlerReadiness);
 app.get("/admin/metrics", handlerDisplayHits);
 app.post("/admin/reset", handlerResetHitsAndUsers);
-app.post("/api/validate_chirp", async(req, res, next) => {
+// app.post("/api/validate_chirp", async(req, res, next) => {
+//     try {
+//         await handlerValidate(req, res);
+//     } catch(err) {
+//         next(err);
+//     }
+// });
+
+app.post("/api/users", async(req, res, next) => {
     try {
-        await handlerValidate(req, res);
+        await handlerCreateUser(req, res);
     } catch(err) {
         next(err);
     }
 });
 
-app.post("/api/users", async(req, res, next) => {
+app.post("/api/chirps", async(req, res, next) => {
     try {
-        await handlerCreateUser(req, res);
+        await handlerCreateChirp(req, res);
     } catch(err) {
         next(err);
     }

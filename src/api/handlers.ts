@@ -2,6 +2,8 @@ import type { NextFunction, Request, Response } from "express";
 import { config } from "../config.js";
 import { notFoundError, unauthorizedError, forbiddenError, badRequestError} from "./errors.js";
 import { reset, createUser } from "../db/queries/users.js";
+import { createChirp } from "../db/queries/createChirp.js";
+import { validateChirp } from "./validateChirp.js";
 
 
 export async function handlerReadiness(_: Request, res: Response){
@@ -43,53 +45,6 @@ export async function handlerResetHitsAndUsers(req : Request, res: Response){
 }
 
 
-export async function handlerValidate(req : Request, res: Response){
-    type JSONbody = {
-        body: string;
-    }
-    type JSONresp = {
-        error?: string;
-        valid?: boolean;
-        cleanedBody?: string;
-    }
-    const JSONobj: JSONbody = req.body;
-    res.header("Content-Type", "application/json");
-
-    if(JSONobj.body.length > 140){
-        throw new badRequestError("Chirp is too long!");
-    }
-
-    const lowerBody = JSONobj.body.toLowerCase();
-    const regArr = JSONobj.body.split(" ");
-    const lowerArr = lowerBody.split(" ");
-    const profaneArr = ["kerfuffle", "sharbert", "fornax"];
-    let isProfane = false;
-    for(let word of profaneArr){
-        if(lowerArr.includes(word)){
-            isProfane = true;
-            break;
-        }
-    }
-    if(isProfane){
-        let retArr = [];
-        for(let i = 0; i < regArr.length; i++){
-            if(profaneArr.includes(lowerArr[i])){
-                retArr.push("****");
-            } else {
-                retArr.push(regArr[i]);
-            }
-        }
-        const respObj: JSONresp = {
-            cleanedBody: retArr.join(" "),
-        }
-        res.status(200).send(respObj);
-        return;
-    }
-    const respObj: JSONresp = {
-        cleanedBody: JSONobj.body,
-    }
-    res.status(200).send(respObj);
-}
 
 export async function errorHandler(err: Error, req : Request, res: Response, next: NextFunction){
     console.log(err)
@@ -125,6 +80,7 @@ export async function handlerCreateUser(req: Request, res: Response){
         if(!user){
             throw new Error("Could not create user")
         }
+
         const resBody = {
             "id": user.id,
             "email": user.email,
@@ -138,4 +94,45 @@ export async function handlerCreateUser(req: Request, res: Response){
     } catch (err) {
         throw err;
     }
+}
+
+export async function handlerCreateChirp(req: Request, res: Response) {
+    const reqBody = req.body;
+    if (!reqBody.body){
+        res.send(400);
+        throw new Error("Chirp has no body");
+    }
+
+    if(!reqBody.userId) {
+        res.send(400);
+        throw new Error("Chirp has no userID");
+    }
+
+    const validChirp = await validateChirp(reqBody.body);
+    if(!validChirp){
+        res.status(400);
+        res.send("Invalid Chirp");
+    }
+
+    const chirp = await createChirp({
+        userId: reqBody.userId,
+        body: validChirp,
+    });
+
+    if(!chirp){
+        res.send(400);
+        throw new Error("Could not write chirp into database");
+    }
+
+    const resBody = {
+        "id": chirp.id,
+        "createdAt": chirp.createdAt,
+        "updatedAt": chirp.updatedAt,
+        "body": chirp.body,
+        "userId": chirp.userId,
+    }
+
+    res.status(201);
+    res.send(JSON.stringify(resBody));
+
 }
