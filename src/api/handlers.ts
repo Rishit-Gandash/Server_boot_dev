@@ -4,8 +4,7 @@ import { notFoundError, unauthorizedError, forbiddenError, badRequestError} from
 import { reset, createUser, getHashPwdByMail, getUserByMail } from "../db/queries/users.js";
 import { createChirp, getAllChirps, getChirpById} from "../db/queries/chirps.js";
 import { validateChirp } from "./validateChirp.js";
-import { hashPassword, checkPasswordHash } from "../auth.js";
-
+import { hashPassword, checkPasswordHash, makeJWT, getBearerToken, validateJWT } from "../auth.js";
 
 export async function handlerReadiness(_: Request, res: Response){
     res.set('Content-Type','text/plain; charset=utf-8');
@@ -104,34 +103,6 @@ export async function handlerCreateUser(req: Request, res: Response){
 }
 
 
-export async function handlerUserLogin (req: Request, res: Response) {
-    const userMail = req.body.email;
-    const userPwd = req.body.password;
-
-    if(!userMail || !userPwd){
-        throw new badRequestError("Missing required Fields");
-    }
-
-    const hashPwd = await getHashPwdByMail(userMail);
-    const valid = await checkPasswordHash(userPwd, hashPwd);
-    if(valid) {
-        const user = await getUserByMail(userMail);
-        const resBody = {
-            "id": user.id,
-            "createdAt": user.createdAt,
-            "updatedAt": user.updatedAt,
-            "email": user.email,
-        }
-
-        res.status(200); 
-        res.send(JSON.stringify(resBody));
-
-    } else {
-        res.status(401)
-        res.send("Invalid password entered")
-    }
-}
-
 export async function handlerCreateChirp(req: Request, res: Response) {
     const reqBody = req.body;
     if (!reqBody.body){
@@ -139,9 +110,15 @@ export async function handlerCreateChirp(req: Request, res: Response) {
         throw new Error("Chirp has no body");
     }
 
-    if(!reqBody.userId) {
-        res.send(400);
-        throw new Error("Chirp has no userID");
+    let token: string;
+    let userId: string;
+    try {
+        token = getBearerToken(req);
+        userId = validateJWT(token, config.secret);
+    } catch (err) {
+        res.status(401);
+        res.send();
+        return;
     }
 
     const validChirp = await validateChirp(reqBody.body);
@@ -151,7 +128,7 @@ export async function handlerCreateChirp(req: Request, res: Response) {
     }
 
     const chirp = await createChirp({
-        userId: reqBody.userId,
+        userId: userId,
         body: validChirp,
     });
 
@@ -159,6 +136,7 @@ export async function handlerCreateChirp(req: Request, res: Response) {
         res.send(400);
         throw new Error("Could not write chirp into database");
     }
+
 
     const resBody = {
         "id": chirp.id,

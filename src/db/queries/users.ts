@@ -24,3 +24,4 @@ export async function getUserByMail(email: string){
     const [result] = await db.select().from(users).where(eq(users.email, email))
     return result;
 }
+

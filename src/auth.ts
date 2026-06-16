@@ -1,7 +1,8 @@
 import { hash, verify } from "argon2";
 import jwt from "jsonwebtoken";
 import type { JwtPayload } from "jsonwebtoken";
-
+import type { Request } from "express";
+import { randomBytes } from "crypto";
 
 type payload = Pick<JwtPayload, "iss" | "sub" | "iat" | "exp">;
 
@@ -37,4 +38,23 @@ export function validateJWT(tokenString: string, secret: string): string {
     catch (err) {
         throw new Error(`auth.ts/validateJwt: ${err}, authentication failed`);
     }
+}
+
+export function getBearerToken(req: Request): string {
+    const authorizationHeader = req.get('Authorization');
+    if(!authorizationHeader) {
+        throw new Error("auth.ts/getBearerToken: Authorization header not found");
+    }
+
+
+    if(authorizationHeader.toLowerCase().startsWith('bearer ')){
+        return authorizationHeader.slice(7);
+    } else {
+        throw new Error("auth.ts/getBearerToken: Invalid authorization header format");
+    }
+}
+
+export function makeRefreshToken(): string{
+    const refreshToken = randomBytes(256);
+    return refreshToken.toString('hex');
 }

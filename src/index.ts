@@ -1,5 +1,8 @@
 import express from "express";
-import { handlerUserLogin, handlerGetChirpById, handlerGetChirps, handlerReadiness, handlerDisplayHits, handlerCreateChirp, errorHandler, handlerCreateUser, handlerResetHitsAndUsers} from "./api/handlers.js";
+import { handlerGetChirpById, handlerGetChirps, handlerReadiness, handlerDisplayHits, handlerCreateChirp, errorHandler, handlerCreateUser, handlerResetHitsAndUsers} from "./api/handlers.js";
+import { handlerUserLogin } from "./api/handlerUserLogin.js";
+import { handlerRefreshTokens } from "./api/handlerRefreshTokens.js";
+import { handlerRevokeTokens } from "./api/handlerRevokeTokens.js";
 import { increaseHits, middlewareLogResponses } from "./api/middleware.js";
 import postgres from "postgres";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
@@ -63,6 +66,23 @@ app.post("/api/chirps", async(req, res, next) => {
         next(err);
     }
 });
+
+app.post("/api/refresh", async(req, res, next) => {
+    try{
+        await handlerRefreshTokens(req, res);
+    } catch (err) {
+        next(err);
+    }
+})
+
+app.post("/api/revoke", async(req, res, next) => {
+    try{
+        await handlerRevokeTokens(req, res);
+    } catch (err) {
+        next(err);
+    }
+})
+
 
 app.use(errorHandler)
 
