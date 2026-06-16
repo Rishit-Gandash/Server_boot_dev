@@ -3,6 +3,7 @@ import { handlerGetChirpById, handlerGetChirps, handlerReadiness, handlerDisplay
 import { handlerUserLogin } from "./api/handlerUserLogin.js";
 import { handlerRefreshTokens } from "./api/handlerRefreshTokens.js";
 import { handlerRevokeTokens } from "./api/handlerRevokeTokens.js";
+import { handlerUpdateEmailPassword } from "./api/handlerUpdateEmailPassword.js";
 import { increaseHits, middlewareLogResponses } from "./api/middleware.js";
 import postgres from "postgres";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
@@ -30,9 +31,12 @@ app.get("/api/chirps", async(req, res, next) => {
         next(err);
     }
 });
+
 app.get("/api/healthz", handlerReadiness);
 app.get("/admin/metrics", handlerDisplayHits);
 app.get("/api/chirps/:chirpId", handlerGetChirpById);
+
+
 app.post("/admin/reset", handlerResetHitsAndUsers);
 
 app.post("/api/login", async(req, res, next) => {
@@ -78,6 +82,14 @@ app.post("/api/refresh", async(req, res, next) => {
 app.post("/api/revoke", async(req, res, next) => {
     try{
         await handlerRevokeTokens(req, res);
+    } catch (err) {
+        next(err);
+    }
+})
+
+app.put("/api/users", async(req, res, next) => {
+    try{
+        await handlerUpdateEmailPassword(req, res);
     } catch (err) {
         next(err);
     }
