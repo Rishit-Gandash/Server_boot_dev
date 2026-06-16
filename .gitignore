@@ -4,4 +4,4 @@ server.log
 notes.txt
 *.log
 dist/
-test/
+tests/
